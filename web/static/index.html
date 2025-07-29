@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARK - Multi-Threaded AI Agent Interface</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+        
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        h3 {
+            color: #4a5568;
+            margin: 15px 0 10px 0;
+            font-size: 1.2em;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 5px;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            max-height: 500px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .agent-message {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            margin-right: auto;
+        }
+        
+        .reasoning {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .status-section {
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .status-content {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.9em;
+        }
+        
+        .status-item {
+            margin-bottom: 8px;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 5px;
+        }
+        
+        .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .state-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .state-button {
+            padding: 8px 12px;
+            font-size: 12px;
+            background: linear-gradient(135deg, #48bb78, #38a169);
+        }
+        
+        .emotion-button {
+            padding: 8px 12px;
+            font-size: 12px;
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+        }
+        
+        .meta-button {
+            padding: 8px 12px;
+            font-size: 12px;
+            background: linear-gradient(135deg, #9f7aea, #805ad5);
+        }
+        
+        .monitor-button {
+            padding: 8px 12px;
+            font-size: 12px;
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+        }
+        
+        .architect-button {
+            padding: 8px 12px;
+            font-size: 12px;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+        }
+        
+        .meta-thoughts {
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+        }
+        
+        .cognitive-status {
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9em;
+        }
+        
+        .system-metrics {
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9em;
+        }
+        
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            font-weight: bold;
+            color: #4a5568;
+        }
+        
+        .metric-value {
+            color: #2d3748;
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        
+        .connected {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+        }
+        
+        .disconnected {
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .quick-action-btn {
+            padding: 6px 10px;
+            font-size: 11px;
+            background: linear-gradient(135deg, #a0aec0, #718096);
+        }
+        
+        .rgb-status {
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.9em;
+        }
+        
+        .rgb-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            border: 2px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        🔌 Подключение...
+    </div>
+    
+    <div class="container">
+        <div class="main-content">
+            <h1>🧠 ARK Multi-Threaded AI Agent</h1>
+            
+            <div class="chat-container">
+                <div id="chatMessages" class="chat-messages">
+                    <div class="message agent-message">
+                        <strong>ARK:</strong> Привет! Я ARK - ваш Multi-Threaded AI агент с системой мета-мыслей и саморефлексии! 🚀
+                    </div>
+                </div>
+                
+                <div class="input-container">
+                    <input type="text" id="messageInput" placeholder="Введите сообщение..." onkeypress="handleKeyPress(event)" />
+                    <button onclick="sendMessage()">Отправить</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <h3>📊 Статус системы</h3>
+            <div id="statusContent" class="status-content">
+                <div class="status-item">Загрузка статуса...</div>
+            </div>
+            
+            <div class="control-buttons">
+                <button onclick="getStatus()">Обновить статус</button>
+                <button onclick="getReasoningChain()">Reasoning Chain</button>
+            </div>
+            
+            <h3>💡 RGB Статус</h3>
+            <div id="rgbStatus" class="rgb-status">
+                <div class="rgb-indicator" id="rgbIndicator"></div>
+                <span id="rgbText">Загрузка...</span>
+            </div>
+            
+            <h3>🧠 Multi-Threaded Thought</h3>
+            <div class="control-buttons">
+                <button class="meta-button" onclick="getMetaThoughts()">Мета-мысли</button>
+                <button class="meta-button" onclick="getMetaState()">Детальное состояние</button>
+            </div>
+            
+            <div class="control-buttons">
+                <button class="monitor-button" onclick="startMetaMonitoring()">Запустить мониторинг</button>
+                <button class="monitor-button" onclick="stopMetaMonitoring()">Остановить мониторинг</button>
+            </div>
+            
+            <h3>🏗️ Архитектор кода</h3>
+            <div class="control-buttons">
+                <button class="architect-button" onclick="getArchitectStatus()">Статус архитектора</button>
+                <button class="architect-button" onclick="analyzeCode()">Анализ кода</button>
+            </div>
+            
+            <h3>🎛️ Управление состоянием</h3>
+            <div class="state-controls">
+                <button class="state-button" onclick="changeState('normal', 'calm')">Нормальное</button>
+                <button class="state-button" onclick="changeState('excited', 'excited')">Возбужденное</button>
+                <button class="state-button" onclick="changeState('focused', 'learning')">Сосредоточенное</button>
+                <button class="state-button" onclick="changeState('stressed', 'concerned')">Стресс</button>
+                <button class="state-button" onclick="changeState('evolving', 'creative')">Эволюция</button>
+                <button class="state-button" onclick="changeState('reflecting', 'curious')">Рефлексия</button>
+            </div>
+            
+            <h3>😊 Эмоции</h3>
+            <div class="state-controls">
+                <button class="emotion-button" onclick="changeState('normal', 'calm')">Спокойствие</button>
+                <button class="emotion-button" onclick="changeState('normal', 'excited')">Возбуждение</button>
+                <button class="emotion-button" onclick="changeState('normal', 'learning')">Обучение</button>
+                <button class="emotion-button" onclick="changeState('normal', 'concerned')">Обеспокоенность</button>
+                <button class="emotion-button" onclick="changeState('normal', 'frustrated')">Раздражение</button>
+                <button class="emotion-button" onclick="changeState('normal', 'creative')">Творчество</button>
+                <button class="emotion-button" onclick="changeState('normal', 'curious')">Любопытство</button>
+                <button class="emotion-button" onclick="changeState('normal', 'satisfied')">Удовлетворение</button>
+            </div>
+            
+            <h3>⚡ Быстрые действия</h3>
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="getAutoReport()">Авто-отчет</button>
+                <button class="quick-action-btn" onclick="testRGB()">Тест RGB</button>
+                <button class="quick-action-btn" onclick="clearChat()">Очистить чат</button>
+                <button class="quick-action-btn" onclick="exportChat()">Экспорт чата</button>
+            </div>
+            
+            <h3>🧠 Когнитивное состояние</h3>
+            <div id="cognitiveStatus" class="cognitive-status">
+                Загрузка...
+            </div>
+            
+            <h3>💻 Системные метрики</h3>
+            <div id="systemMetrics" class="system-metrics">
+                Загрузка...
+            </div>
+            
+            <h3>💭 Мета-мысли</h3>
+            <div id="metaThoughts" class="meta-thoughts">
+                Загрузка...
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        let chatHistory = [];
+        
+        function connect() {
+            ws = new WebSocket('ws://localhost:8000/ws');
+            
+            ws.onopen = function() {
+                console.log('WebSocket соединение установлено');
+                updateConnectionStatus(true);
+                addStatusMessage('✅ WebSocket соединение установлено');
+                getStatus();
+                getMetaThoughts();
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'agent_response') {
+                    addAgentMessage(data.text, data.reasoning_chain);
+                } else if (data.type === 'status_update') {
+                    updateAgentState(data.consciousness_state, data.emotion_state);
+                    updateVisualFeedback(data.visual_feedback);
+                    updateRGBStatus(data.rgb_status);
+                }
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket соединение закрыто');
+                updateConnectionStatus(false);
+                addStatusMessage('❌ WebSocket соединение закрыто');
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket ошибка:', error);
+                updateConnectionStatus(false);
+                addStatusMessage('❌ WebSocket ошибка');
+            };
+        }
+        
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            if (connected) {
+                status.textContent = '🟢 Подключено';
+                status.className = 'connection-status connected';
+            } else {
+                status.textContent = '🔴 Отключено';
+                status.className = 'connection-status disconnected';
+            }
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    text: message,
+                    user_id: 'user'
+                }));
+                
+                addUserMessage(message);
+                input.value = '';
+            }
+        }
+        
+        function addUserMessage(text) {
+            const messages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            messageDiv.innerHTML = `<strong>Вы:</strong> ${text}`;
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+            
+            // Сохраняем в историю
+            chatHistory.push({
+                type: 'user',
+                text: text,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        function addAgentMessage(text, reasoningChain) {
+            const messages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message agent-message';
+            
+            let reasoningHtml = '';
+            if (reasoningChain && reasoningChain.length > 0) {
+                reasoningHtml = '<div class="reasoning"><strong>Reasoning Chain:</strong><br>';
+                reasoningChain.forEach(step => {
+                    reasoningHtml += `• ${step.content}<br>`;
+                });
+                reasoningHtml += '</div>';
+            }
+            
+            messageDiv.innerHTML = `<strong>ARK:</strong> ${text}${reasoningHtml}`;
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+            
+            // Сохраняем в историю
+            chatHistory.push({
+                type: 'agent',
+                text: text,
+                reasoning: reasoningChain,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        function addStatusMessage(text) {
+            const status = document.getElementById('statusContent');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'status-item';
+            statusDiv.textContent = text;
+            status.appendChild(statusDiv);
+            status.scrollTop = status.scrollHeight;
+        }
+        
+        function updateAgentState(consciousness, emotion) {
+            addStatusMessage(`🧠 Сознание: ${consciousness} | 😊 Эмоция: ${emotion}`);
+        }
+        
+        function updateVisualFeedback(visual) {
+            if (visual && visual.emoji) {
+                addStatusMessage(`🎨 Визуальная обратная связь: ${visual.emoji} ${visual.state}`);
+            }
+        }
+        
+        function updateRGBStatus(rgb) {
+            const indicator = document.getElementById('rgbIndicator');
+            const text = document.getElementById('rgbText');
+            
+            if (rgb && rgb.color) {
+                const colorMap = {
+                    'red': '#ff0000',
+                    'green': '#00ff00',
+                    'blue': '#0000ff',
+                    'yellow': '#ffff00',
+                    'purple': '#800080',
+                    'cyan': '#00ffff',
+                    'orange': '#ffa500',
+                    'white': '#ffffff',
+                    'off': '#000000'
+                };
+                
+                indicator.style.backgroundColor = colorMap[rgb.color.toLowerCase()] || '#0000ff';
+                text.textContent = `${rgb.color} (доступно: ${rgb.available})`;
+                addStatusMessage(`💡 RGB: ${rgb.color} (доступно: ${rgb.available})`);
+            }
+        }
+        
+        async function getStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                addStatusMessage(`🧠 Сознание: ${data.consciousness_state} | 😊 Эмоция: ${data.emotion_state}`);
+                
+                if (data.meta_thoughts) {
+                    updateCognitiveStatus(data.meta_thoughts.cognitive_state);
+                    updateSystemMetrics(data.meta_thoughts.system_metrics);
+                }
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка получения статуса: ${error.message}`);
+            }
+        }
+        
+        async function getReasoningChain() {
+            try {
+                const response = await fetch('/api/reasoning_chain');
+                const data = await response.json();
+                
+                addStatusMessage(`🔗 Reasoning Chain получен (${data.reasoning_chain.length} шагов)`);
+                
+                if (data.meta_thoughts) {
+                    updateMetaThoughts(data.meta_thoughts);
+                }
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка получения reasoning chain: ${error.message}`);
+            }
+        }
+        
+        async function getMetaThoughts() {
+            try {
+                const response = await fetch('/api/meta_thoughts');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    updateMetaThoughts(data.meta_thoughts_summary);
+                    updateCognitiveStatus(data.cognitive_state);
+                    updateSystemMetrics(data.system_metrics);
+                    addStatusMessage(`💭 Мета-мысли обновлены`);
+                }
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка получения мета-мыслей: ${error.message}`);
+            }
+        }
+        
+        async function getMetaState() {
+            try {
+                const response = await fetch('/api/meta_thoughts/state');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    updateCognitiveStatus(data.state.cognitive_state);
+                    updateSystemMetrics(data.state.system_metrics);
+                    updateMetaThoughts(data.state.meta_thoughts);
+                    addStatusMessage(`📊 Детальное состояние получено`);
+                }
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка получения детального состояния: ${error.message}`);
+            }
+        }
+        
+        async function startMetaMonitoring() {
+            try {
+                const response = await fetch('/api/meta_thoughts/start', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    addStatusMessage(`✅ Мониторинг мета-мыслей запущен`);
+                }
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка запуска мониторинга: ${error.message}`);
+            }
+        }
+        
+        async function stopMetaMonitoring() {
+            try {
+                const response = await fetch('/api/meta_thoughts/stop', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    addStatusMessage(`⏹️ Мониторинг мета-мыслей остановлен`);
+                }
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка остановки мониторинга: ${error.message}`);
+            }
+        }
+        
+        async function changeState(consciousness, emotion) {
+            try {
+                const response = await fetch(`/api/change_state?consciousness_state=${consciousness}&emotion_state=${emotion}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    addStatusMessage(`🔄 Состояние изменено: ${consciousness} + ${emotion}`);
+                    getStatus();
+                }
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка изменения состояния: ${error.message}`);
+            }
+        }
+        
+        async function getArchitectStatus() {
+            try {
+                const response = await fetch('/api/architect/status');
+                const data = await response.json();
+                addStatusMessage(`🏗️ Статус архитектора: ${data.status}`);
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка получения статуса архитектора: ${error.message}`);
+            }
+        }
+        
+        async function analyzeCode() {
+            try {
+                const response = await fetch('/api/architect/analyze', { method: 'POST' });
+                const data = await response.json();
+                addStatusMessage(`🔍 Анализ кода выполнен: ${data.message}`);
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка анализа кода: ${error.message}`);
+            }
+        }
+        
+        async function getAutoReport() {
+            try {
+                const response = await fetch('/api/auto_report');
+                const data = await response.json();
+                addStatusMessage(`📊 Авто-отчет: ${data.report}`);
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка получения авто-отчета: ${error.message}`);
+            }
+        }
+        
+        async function testRGB() {
+            try {
+                const colors = ['red', 'green', 'blue', 'yellow', 'purple'];
+                for (let color of colors) {
+                    await fetch(`/api/change_state?consciousness_state=normal&emotion_state=calm`, {
+                        method: 'POST'
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                addStatusMessage(`🎨 Тест RGB завершен`);
+            } catch (error) {
+                addStatusMessage(`❌ Ошибка теста RGB: ${error.message}`);
+            }
+        }
+        
+        function clearChat() {
+            const messages = document.getElementById('chatMessages');
+            messages.innerHTML = '<div class="message agent-message"><strong>ARK:</strong> Чат очищен! 🧹</div>';
+            chatHistory = [];
+            addStatusMessage(`🗑️ Чат очищен`);
+        }
+        
+        function exportChat() {
+            const chatData = {
+                timestamp: new Date().toISOString(),
+                messages: chatHistory
+            };
+            
+            const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ark_chat_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            addStatusMessage(`📤 Чат экспортирован`);
+        }
+        
+        function updateCognitiveStatus(cognitiveState) {
+            const element = document.getElementById('cognitiveStatus');
+            if (cognitiveState) {
+                element.innerHTML = `
+                    <div class="metric-item">
+                        <span class="metric-label">Внимание:</span>
+                        <span class="metric-value">${cognitiveState.attention_percent?.toFixed(1) || 'N/A'}%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Уровень внимания:</span>
+                        <span class="metric-value">${cognitiveState.attention_level || 'N/A'}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Когнитивная нагрузка:</span>
+                        <span class="metric-value">${cognitiveState.cognitive_load?.toFixed(2) || 'N/A'}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Уверенность:</span>
+                        <span class="metric-value">${cognitiveState.confidence_level?.toFixed(2) || 'N/A'}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Эмоция:</span>
+                        <span class="metric-value">${cognitiveState.emotional_state || 'N/A'}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Сознание:</span>
+                        <span class="metric-value">${cognitiveState.consciousness_state || 'N/A'}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateSystemMetrics(systemMetrics) {
+            const element = document.getElementById('systemMetrics');
+            if (systemMetrics) {
+                element.innerHTML = `
+                    <div class="metric-item">
+                        <span class="metric-label">CPU:</span>
+                        <span class="metric-value">${systemMetrics.cpu_percent?.toFixed(1) || 'N/A'}%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">RAM:</span>
+                        <span class="metric-value">${systemMetrics.memory_percent?.toFixed(1) || 'N/A'}%</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Температура:</span>
+                        <span class="metric-value">${systemMetrics.temperature?.toFixed(1) || 'N/A'}°C</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Диск I/O:</span>
+                        <span class="metric-value">${systemMetrics.disk_io?.read_bytes ? 'Активен' : 'Неактивен'}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Сеть I/O:</span>
+                        <span class="metric-value">${systemMetrics.network_io?.bytes_sent ? 'Активна' : 'Неактивна'}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateMetaThoughts(metaThoughts) {
+            const element = document.getElementById('metaThoughts');
+            if (metaThoughts) {
+                element.textContent = metaThoughts;
+            }
+        }
+        
+        // Connect on page load
+        connect();
+        
+        // Auto-refresh every 10 seconds
+        setInterval(() => {
+            getStatus();
+            getMetaThoughts();
+        }, 10000);
+    </script>
+</body>
+</html> 

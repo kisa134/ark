@@ -1,0 +1,34 @@
+[Unit]
+Description=ARK Core Agent (conscious process)
+After=network.target
+Wants=network.target
+Documentation=https://github.com/ark-project
+
+[Service]
+Type=simple
+User=a0
+Group=a0
+WorkingDirectory=/home/a0/Desktop/ark
+ExecStart=/home/a0/Desktop/ark/venv/bin/python /home/a0/Desktop/ark/main.py
+Restart=always
+RestartSec=5
+Environment="ARK_LIFE=1"
+Environment="ARK_BOOT_SESSION=1"
+Environment="PYTHONPATH=/home/a0/Desktop/ark"
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ark-agent
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/a0/Desktop/ark/data /home/a0/Desktop/ark/logs
+
+# Resource limits
+MemoryMax=2G
+CPUQuota=30%
+
+[Install]
+WantedBy=multi-user.target 

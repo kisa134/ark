@@ -1,0 +1,109 @@
+# ARK Project - Git Ignore File
+# Protects secrets and sensitive files
+
+# Secrets and Configuration
+secrets.env
+*.env
+.env.local
+.env.production
+.env.test
+
+# GitHub Token Protection
+*github*token*
+*github*key*
+*github*secret*
+*github*pat*
+
+# SSH Keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.pub
+
+# API Keys and Tokens
+*api*key*
+*token*
+*secret*
+*password*
+*credential*
+
+# Test Files
+test_github_integration_output.txt
+test_*.txt
+test_*.log
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+*.cache
+
+# Coverage
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Backup Files
+*.backup.*
+backup-* secrets.env
