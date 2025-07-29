@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARK v2.8 - Тестовый интерфейс</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .chat-area {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .metric-title {
+            font-weight: bold;
+            color: #495057;
+        }
+        .metric-value {
+            font-size: 1.2em;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 ARK v2.8 - Тестовый интерфейс</h1>
+        
+        <div id="status" class="status info">Проверка подключения...</div>
+        
+        <div class="metrics">
+            <div class="metric-card">
+                <div class="metric-title">Статус сервера</div>
+                <div id="server-status" class="metric-value">Проверка...</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Сознание</div>
+                <div id="consciousness" class="metric-value">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Эмоция</div>
+                <div id="emotion" class="metric-value">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-title">Инструменты</div>
+                <div id="tools-count" class="metric-value">-</div>
+            </div>
+        </div>
+        
+        <h3>💬 Чат с агентом</h3>
+        <div id="chat-area" class="chat-area">
+            <div>Ожидание подключения...</div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="message-input" placeholder="Введите сообщение..." />
+            <button onclick="sendMessage()">Отправить</button>
+        </div>
+        
+        <h3>🔧 Тестовые кнопки</h3>
+        <div style="margin: 10px 0;">
+            <button onclick="testAPI()">Тест API</button>
+            <button onclick="testWebSocket()">Тест WebSocket</button>
+            <button onclick="loadLogs()">Загрузить логи</button>
+            <button onclick="clearChat()">Очистить чат</button>
+        </div>
+        
+        <div id="logs-area" style="margin-top: 20px; display: none;">
+            <h3>📋 Системные логи</h3>
+            <div id="logs-content" style="background: #f8f9fa; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            checkServerStatus();
+            connectWebSocket();
+        });
+        
+        // Проверка статуса сервера
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                document.getElementById('status').className = 'status success';
+                document.getElementById('status').textContent = '✅ Сервер подключен';
+                
+                document.getElementById('server-status').textContent = data.status || 'unknown';
+                document.getElementById('consciousness').textContent = data.consciousness_state || 'unknown';
+                document.getElementById('emotion').textContent = data.emotion_state || 'unknown';
+                
+                // Загружаем инструменты
+                loadTools();
+                
+            } catch (error) {
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').textContent = '❌ Ошибка подключения: ' + error.message;
+            }
+        }
+        
+        // Загрузка инструментов
+        async function loadTools() {
+            try {
+                const response = await fetch('/api/tools_status');
+                const data = await response.json();
+                document.getElementById('tools-count').textContent = data.tools ? data.tools.length : 0;
+            } catch (error) {
+                console.error('Ошибка загрузки инструментов:', error);
+            }
+        }
+        
+        // Подключение WebSocket
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:8000/ws');
+            
+            ws.onopen = function() {
+                console.log('WebSocket подключен');
+                isConnected = true;
+                addChatMessage('🤖', 'Система подключена и готова к общению!');
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('Получено сообщение:', data);
+                
+                if (data.type === 'agent_response') {
+                    addChatMessage('🤖', data.text);
+                } else if (data.type === 'agent_state') {
+                    updateAgentState(data);
+                } else if (data.type === 'state_update') {
+                    updateAgentState(data);
+                }
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket отключен');
+                isConnected = false;
+                addChatMessage('⚠️', 'Соединение потеряно');
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket ошибка:', error);
+                addChatMessage('❌', 'Ошибка соединения');
+            };
+        }
+        
+        // Отправка сообщения
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addChatMessage('👤', message);
+            input.value = '';
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'user_message',
+                    text: message,
+                    user_id: 'test_user'
+                }));
+            } else {
+                addChatMessage('❌', 'WebSocket не подключен');
+            }
+        }
+        
+        // Добавление сообщения в чат
+        function addChatMessage(sender, text) {
+            const chatArea = document.getElementById('chat-area');
+            const messageDiv = document.createElement('div');
+            messageDiv.style.margin = '5px 0';
+            messageDiv.style.padding = '5px';
+            messageDiv.style.borderRadius = '5px';
+            messageDiv.style.backgroundColor = sender === '🤖' ? '#e3f2fd' : '#f3e5f5';
+            messageDiv.innerHTML = `<strong>${sender}</strong>: ${text}`;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        
+        // Обновление состояния агента
+        function updateAgentState(data) {
+            if (data.consciousness_state) {
+                document.getElementById('consciousness').textContent = data.consciousness_state;
+            }
+            if (data.emotion_state) {
+                document.getElementById('emotion').textContent = data.emotion_state;
+            }
+        }
+        
+        // Тестовые функции
+        function testAPI() {
+            checkServerStatus();
+            addChatMessage('🔧', 'Тест API выполнен');
+        }
+        
+        function testWebSocket() {
+            if (isConnected) {
+                addChatMessage('🔧', 'WebSocket работает');
+            } else {
+                addChatMessage('❌', 'WebSocket не подключен');
+                connectWebSocket();
+            }
+        }
+        
+        function loadLogs() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(data => {
+                    const logsArea = document.getElementById('logs-area');
+                    const logsContent = document.getElementById('logs-content');
+                    logsContent.textContent = data.logs || 'Логи недоступны';
+                    logsArea.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки логов:', error);
+                    addChatMessage('❌', 'Ошибка загрузки логов');
+                });
+        }
+        
+        function clearChat() {
+            document.getElementById('chat-area').innerHTML = '';
+            addChatMessage('🧹', 'Чат очищен');
+        }
+        
+        // Обработка Enter в поле ввода
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html> 

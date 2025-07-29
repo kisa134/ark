@@ -93,11 +93,28 @@ class LLMConfig:
     COHERE_API_KEY: Optional[str] = get_secret("COHERE_API_KEY")
     
     # Ollama configuration
-    OLLAMA_API_KEY: str = get_secret("OLLAMA_API_KEY", "ollama")
-    OLLAMA_BASE_URL: str = get_secret("OLLAMA_BASE_URL", "http://localhost:11434")
-    
-    # Timeout configuration
-    TIMEOUT: int = int(get_secret("ARK_LLM_TIMEOUT", "30"))
+OLLAMA_API_KEY: str = get_secret("OLLAMA_API_KEY", "ollama")
+OLLAMA_BASE_URL: str = get_secret("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# Timeout configuration
+TIMEOUT: int = int(get_secret("ARK_LLM_TIMEOUT", "30"))
+
+# Essential secrets with defaults
+ARK_DB_ENCRYPTION_KEY: str = get_secret("ARK_DB_ENCRYPTION_KEY", "default_encryption_key_32_chars_long")
+MEMORY_ENCRYPTION_KEY: str = get_secret("MEMORY_ENCRYPTION_KEY", "default_memory_key_32_chars_long")
+CONSCIOUSNESS_ENCRYPTION_KEY: str = get_secret("CONSCIOUSNESS_ENCRYPTION_KEY", "default_consciousness_key_32_chars_long")
+EVOLUTION_APPROVAL_TOKEN: str = get_secret("EVOLUTION_APPROVAL_TOKEN", "default_approval_token")
+SELF_MODIFICATION_KEY: str = get_secret("SELF_MODIFICATION_KEY", "default_modification_key")
+JWT_SECRET_KEY: str = get_secret("JWT_SECRET_KEY", "default_jwt_secret_key_32_chars_long")
+API_SECRET_KEY: str = get_secret("API_SECRET_KEY", "default_api_secret_key_32_chars_long")
+ENCRYPTION_KEY_32: str = get_secret("ENCRYPTION_KEY_32", "default_encryption_key_32_chars_long")
+ENCRYPTION_KEY_64: str = get_secret("ENCRYPTION_KEY_64", "default_encryption_key_64_chars_long")
+
+# GitHub configuration
+GITHUB_FINE_TOKEN: str = get_secret("GITHUB_FINE_TOKEN", "")
+GIT_USERNAME: str = get_secret("GIT_USERNAME", "ark-user")
+GIT_EMAIL: str = get_secret("GIT_EMAIL", "ark@example.com")
+GIT_REPO_URL: str = get_secret("GIT_REPO_URL", "https://github.com/kisa134/ark")
 
 @dataclass
 class NetworkConfig:

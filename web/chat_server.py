@@ -26,6 +26,7 @@ from body.embodied_feedback import embodied_feedback, ConsciousnessState, Emotio
 from evaluation.auto_reporter import auto_reporter
 from psyche.emotional_core import EmotionalProcessingCore
 from mind.multi_threaded_thought import multi_threaded_thought
+from mind.cognitive_architecture import cognitive_brain, BrainDepartment, BrainConsensus
 
 
 class ChatManager:
@@ -137,85 +138,81 @@ class ChatManager:
             await self.send_personal_message(json.dumps(error_response), websocket)
     
     async def generate_reasoning_chain(self, user_text: str) -> List[Dict[str, Any]]:
-        """Generate reasoning chain for user input"""
-        reasoning_steps = []
-        
-        # Step 1: Analysis
-        analysis = f"Анализирую запрос пользователя: '{user_text}'. Определяю контекст и намерения."
-        reasoning_steps.append({
-            "step": 1,
-            "type": "analysis",
-            "content": analysis,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        # Step 2: Emotional processing
-        # Analyze text sentiment and update emotional state using process_input
-        emotional_analysis = self.emotional_core.process_input(user_text)
-        detected_emotions = emotional_analysis.get("detected_emotions", {})
-        dominant_emotion = emotional_analysis.get("dominant_emotion", "trust")
-        response_tone = emotional_analysis.get("response_tone", "neutral")
-        
-        emotional_step = f"Эмоциональная обработка: {dominant_emotion} - обнаружены эмоции: {list(detected_emotions.keys())} (тон: {response_tone})"
-        
-        reasoning_steps.append({
-            "step": 2,
-            "type": "emotional_processing",
-            "content": emotional_step,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        # Step 3: Consciousness processing
-        # Get current emotional state and consciousness
-        current_emotions = self.emotional_core.get_current_emotional_state()
-        dominant_emotion = self.emotional_core.get_dominant_emotion()
-        consciousness_step = f"Обработка сознания: {embodied_feedback.consciousness_state.value} - доминирующая эмоция: {dominant_emotion or 'neutral'}"
-        reasoning_steps.append({
-            "step": 3,
-            "type": "consciousness_processing",
-            "content": consciousness_step,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        # Step 4: Strategy formation
-        strategy = f"Формирую стратегию ответа на основе анализа и эмоционального состояния."
-        reasoning_steps.append({
-            "step": 4,
-            "type": "strategy",
-            "content": strategy,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        # Step 5: Self-reflection
-        reflection = f"Саморефлексия: оцениваю качество reasoning и корректность эмоционального отклика."
-        reasoning_steps.append({
-            "step": 5,
-            "type": "self_reflection",
-            "content": reflection,
-            "timestamp": datetime.now().isoformat()
-        })
-        
-        return reasoning_steps
+        """Generate reasoning chain using brain departments"""
+        try:
+            # Простая обработка через когнитивную архитектуру
+            from mind.cognitive_architecture import cognitive_brain
+            
+            # Обрабатываем через когнитивную архитектуру
+            result = cognitive_brain.process_user_input(user_text)
+            
+            if not result:
+                return [{
+                    "step": 1,
+                    "department": "meta_observer",
+                    "department_name": "Meta Observer",
+                    "reasoning": "Processing user input through cognitive architecture",
+                    "output": "I understand your request and will process it accordingly.",
+                    "confidence": 0.7,
+                    "timestamp": datetime.now().isoformat(),
+                    "metadata": {"status": "processed"}
+                }]
+            
+            # Возвращаем простую цепочку рассуждений
+            return [{
+                "step": 1,
+                "department": "meta_observer",
+                "department_name": "Meta Observer",
+                "reasoning": f"Processing user input: {user_text}",
+                "output": result.get("decision", "Request processed successfully"),
+                "confidence": result.get("confidence", 0.7),
+                "timestamp": datetime.now().isoformat(),
+                "metadata": {"status": "success"}
+            }]
+            
+        except Exception as e:
+            self.logger.error(f"Error in reasoning chain generation: {e}")
+            return [{
+                "step": 1,
+                "department": "error",
+                "department_name": "Error",
+                "reasoning": f"Error processing request: {str(e)}",
+                "output": "I encountered an error while processing your request.",
+                "confidence": 0.0,
+                "timestamp": datetime.now().isoformat(),
+                "metadata": {"error": str(e)}
+            }]
     
     async def generate_agent_response(self, user_text: str, reasoning_chain: List[Dict[str, Any]]) -> str:
         """Generate agent response based on reasoning chain"""
-        # Simple response generation based on input type
-        if "привет" in user_text.lower() or "hello" in user_text.lower():
-            return "Привет! Я ARK v2.8 - ваш воплощенный ИИ-агент. Как я могу помочь вам сегодня?"
-        
-        elif "состояние" in user_text.lower() or "status" in user_text.lower():
-            feedback = embodied_feedback.get_feedback_summary()
-            return f"Мое текущее состояние: {feedback.get('consciousness_state', 'unknown')} с эмоцией {feedback.get('emotion_state', 'unknown')}. RGB подсветка: {feedback.get('rgb_status', {}).get('color', 'unknown')}"
-        
-        elif "reasoning" in user_text.lower() or "рассуждение" in user_text.lower():
-            return f"Я только что выполнил {len(reasoning_chain)} шагов reasoning. Хотите увидеть детали?"
-        
-        elif "эволюция" in user_text.lower() or "evolution" in user_text.lower():
-            embodied_feedback.set_consciousness_state(ConsciousnessState.EVOLVING, EmotionState.CREATIVE)
-            return "Запускаю процесс эволюции! Мое сознание переходит в режим творческого развития."
-        
-        else:
-            return f"Понял ваш запрос: '{user_text}'. Я обработал его через {len(reasoning_chain)} шагов reasoning. Что еще вас интересует?"
+        try:
+            # Простая логика генерации ответа
+            if "привет" in user_text.lower() or "hello" in user_text.lower():
+                return "Привет! Я ARK v2.8 - ваш воплощенный ИИ-агент. Как я могу помочь вам сегодня?"
+            
+            elif "как дела" in user_text.lower() or "how are you" in user_text.lower():
+                return "Спасибо, у меня все хорошо! Я готов помочь вам с любыми задачами."
+            
+            elif "расскажи о себе" in user_text.lower() or "tell me about yourself" in user_text.lower():
+                return "Я ARK v2.8 - когнитивный ИИ-агент с воплощенной архитектурой. У меня есть когнитивные отделы мозга, эмоциональная система и способность к самоэволюции. Я могу анализировать, планировать, критиковать и создавать решения."
+            
+            elif "что ты умеешь" in user_text.lower() or "what can you do" in user_text.lower():
+                return "Я умею: анализировать производительность системы, планировать эволюцию, проверять безопасность кода, документировать изменения, сохранять память о взаимодействиях и многое другое. Просто скажите, что вам нужно!"
+            
+            elif "покажи возможности" in user_text.lower() or "show capabilities" in user_text.lower():
+                return "Мои возможности: 1) Когнитивная архитектура с 6 отделами мозга, 2) Эмоциональная система, 3) Самоэволюция, 4) Анализ производительности, 5) Безопасность кода, 6) Документирование, 7) Планирование, 8) Критический анализ."
+            
+            else:
+                # Используем reasoning chain для генерации ответа
+                if reasoning_chain and len(reasoning_chain) > 0:
+                    last_step = reasoning_chain[-1]
+                    return last_step.get("output", "Я обработал ваш запрос и готов помочь!")
+                else:
+                    return "Я получил ваше сообщение и обрабатываю его. Чем еще могу помочь?"
+                    
+        except Exception as e:
+            self.logger.error(f"Error generating agent response: {e}")
+            return "Извините, произошла ошибка при обработке вашего запроса. Попробуйте еще раз."
     
     async def update_agent_state(self, user_text: str, response: str):
         """Update agent state based on interaction"""
@@ -455,24 +452,29 @@ async def get_chat_page():
     return HTMLResponse(content=html_content)
 
 
+@app.get("/test")
+async def get_test_page():
+    """Тестовая страница"""
+    return HTMLResponse(open("web/static/test.html").read())
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time chat"""
     await chat_manager.connect(websocket)
-    
     try:
         while True:
-            # Receive message
+            # Получаем сообщение от клиента
             data = await websocket.receive_text()
             message = json.loads(data)
             
-            # Process message
+            # Обрабатываем сообщение
             await chat_manager.process_user_message(message, websocket)
             
     except WebSocketDisconnect:
         chat_manager.disconnect(websocket)
     except Exception as e:
-        logging.error(f"WebSocket error: {e}")
+        chat_manager.logger.error(f"WebSocket error: {e}")
         chat_manager.disconnect(websocket)
 
 
@@ -757,6 +759,185 @@ async def architect_optimize_code():
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/brain/status")
+async def get_brain_status():
+    """Get brain department status"""
+    try:
+        return brain_trust.get_department_status()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/brain/consensus_history")
+async def get_brain_consensus_history():
+    """Get brain consensus history"""
+    try:
+        return {"history": brain_trust.get_consensus_history()}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/brain/process")
+async def process_with_brain_departments(request: Dict[str, Any]):
+    """Process input through brain departments"""
+    try:
+        user_text = request.get("text", "")
+        context = request.get("context", {})
+        
+        consensus = await brain_trust.process_through_pipeline(user_text, context)
+        
+        return {
+            "success": True,
+            "consensus": {
+                "final_decision": consensus.final_decision,
+                "confidence_score": consensus.confidence_score,
+                "conflicts": consensus.conflicts,
+                "meta_analysis": consensus.meta_analysis,
+                "department_votes": {
+                    dept.value: vote for dept, vote in consensus.department_votes.items()
+                }
+            },
+            "reasoning_trace": [
+                {
+                    "department": chain.department.value,
+                    "output": chain.output,
+                    "confidence": chain.confidence,
+                    "timestamp": chain.timestamp.isoformat()
+                }
+                for chain in consensus.reasoning_trace
+            ]
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/evolution_status")
+async def get_evolution_status():
+    """Get evolution status and statistics"""
+    try:
+        # Здесь можно добавить реальную логику получения статуса эволюции
+        return {
+            "cycles": 0,
+            "success_rate": 0,
+            "improvements": 0,
+            "last_evolution": None,
+            "is_running": False,
+            "current_stage": "idle"
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/evolution/start")
+async def start_evolution():
+    """Start agent evolution process"""
+    try:
+        # Здесь можно добавить реальную логику запуска эволюции
+        embodied_feedback.set_consciousness_state(ConsciousnessState.EVOLVING, EmotionState.CREATIVE)
+        
+        return {
+            "success": True,
+            "message": "Эволюция агента запущена",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/evolution/pause")
+async def pause_evolution():
+    """Pause agent evolution process"""
+    try:
+        # Здесь можно добавить реальную логику приостановки эволюции
+        embodied_feedback.set_consciousness_state(ConsciousnessState.NORMAL, EmotionState.CALM)
+        
+        return {
+            "success": True,
+            "message": "Эволюция агента приостановлена",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/evolution/reset")
+async def reset_evolution():
+    """Reset agent evolution process"""
+    try:
+        # Здесь можно добавить реальную логику сброса эволюции
+        embodied_feedback.set_consciousness_state(ConsciousnessState.NORMAL, EmotionState.CALM)
+        
+        return {
+            "success": True,
+            "message": "Эволюция агента сброшена",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/tools_status")
+async def get_tools_status():
+    """Get available tools status"""
+    try:
+        # Здесь можно добавить реальную логику получения статуса инструментов
+        tools = [
+            {
+                "name": "analyze_performance",
+                "description": "Анализ производительности системы",
+                "status": "available"
+            },
+            {
+                "name": "plan_evolution",
+                "description": "Планирование эволюции агента",
+                "status": "available"
+            },
+            {
+                "name": "review_code_changes",
+                "description": "Обзор изменений кода",
+                "status": "available"
+            },
+            {
+                "name": "validate_syntax",
+                "description": "Проверка синтаксиса кода",
+                "status": "available"
+            },
+            {
+                "name": "check_security",
+                "description": "Проверка безопасности",
+                "status": "available"
+            },
+            {
+                "name": "identify_bottlenecks",
+                "description": "Выявление узких мест",
+                "status": "available"
+            }
+        ]
+        
+        return {"tools": tools}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/logs")
+async def get_logs():
+    """Получить системные логи"""
+    try:
+        # Читаем последние логи из файла
+        log_file = Path("logs/ark.log")
+        if log_file.exists():
+            with open(log_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                # Возвращаем последние 100 строк
+                recent_logs = lines[-100:] if len(lines) > 100 else lines
+                return {"logs": "".join(recent_logs)}
+        else:
+            return {"logs": "Логи недоступны"}
+    except Exception as e:
+        return {"logs": f"Ошибка чтения логов: {e}"}
 
 
 if __name__ == "__main__":

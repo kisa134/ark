@@ -10,6 +10,7 @@ import logging
 import argparse
 import os
 import json
+import asyncio
 from datetime import datetime
 from typing import Dict, Any, List
 import threading
@@ -22,7 +23,8 @@ from mind import ConsciousnessCore, MambaModel, SelfRepresentationCore
 from mind.multi_threaded_thought import MultiThreadedThought
 from psyche import EmotionalProcessingCore, CrewManager, AgentTools
 from will import SelfCompiler, AsimovComplianceFilter, ToolExecutor
-from evaluation import ConsciousnessMonitor
+from evaluation import ConsciousnessMonitor, auto_reporter, meta_observer
+from mind.cognitive_architecture import cognitive_brain, CognitiveEventType, CognitiveEvent, BrainDepartment, BrainConsensus
 
 
 class Ark:
@@ -60,26 +62,28 @@ class Ark:
         self.logger.info(f"💫 Статус жизни: {self.life_status}")
     
     def _initialize_components(self):
-        """Инициализация всех компонентов системы"""
+        """Initialize all ARK components"""
         try:
             # Уровень "Тело"
+            sensorium = Sensorium()
             self.body = {
-                "sensorium": Sensorium(),
+                "sensorium": sensorium,
                 "actuator": Actuator(),
-                "metabolism": DigitalMetabolism(Sensorium())
+                "digital_metabolism": DigitalMetabolism(sensorium)
             }
             
-            # Уровень "Разум"
+            # Уровень "Разум" - теперь с когнитивной архитектурой
             self.mind = {
                 "consciousness_core": ConsciousnessCore(),
                 "mamba_model": MambaModel({"d_model": 512, "n_layers": 4}),
                 "self_representation_core": SelfRepresentationCore(),
-                "multi_threaded_thought": MultiThreadedThought()
+                "multi_threaded_thought": MultiThreadedThought(),
+                "cognitive_brain": cognitive_brain  # Новая когнитивная архитектура
             }
             
-            # Уровень "Личность"
+            # Уровень "Психика"
             self.psyche = {
-                "emotional_core": EmotionalProcessingCore(),
+                "emotional_processing_core": EmotionalProcessingCore(),
                 "crew_manager": CrewManager(),
                 "agent_tools": AgentTools()
             }
@@ -87,37 +91,16 @@ class Ark:
             # Уровень "Воля"
             self.will = {
                 "self_compiler": SelfCompiler(),
-                "asimov_filter": AsimovComplianceFilter(),
+                "asimov_compliance_filter": AsimovComplianceFilter(),
                 "tool_executor": ToolExecutor()
             }
             
-            # Модуль оценки
-            self.monitor = ConsciousnessMonitor()
-            self.monitor.set_components(self.body, self.mind, self.psyche, self.will)
-            
-            # Инициализация embodied feedback system
-            try:
-                from body.embodied_feedback import embodied_feedback, ConsciousnessState, EmotionState
-                embodied_feedback.start_monitoring()
-                self.logger.info("Embodied feedback system started")
-                
-                # Установка начального состояния сознания
-                embodied_feedback.set_consciousness_state(
-                    ConsciousnessState.NORMAL, 
-                    EmotionState.CALM
-                )
-                
-            except Exception as e:
-                self.logger.warning(f"Embodied feedback initialization failed: {e}")
-            
-            # Инициализация auto-reporting system
-            try:
-                from evaluation.auto_reporter import auto_reporter
-                auto_reporter.start_reporting()
-                self.logger.info("Auto-reporting system started")
-                
-            except Exception as e:
-                self.logger.warning(f"Auto-reporting initialization failed: {e}")
+            # Уровень "Эволюция"
+            self.evaluation = {
+                "consciousness_monitor": ConsciousnessMonitor(),
+                "auto_reporter": auto_reporter,
+                "meta_observer": meta_observer
+            }
             
             self.logger.info("Все компоненты инициализированы")
             
@@ -212,14 +195,22 @@ class Ark:
             return
         
         self._running = True
-        self.logger.info("Запуск главного цикла жизни Ark v1.3")
+        self.logger.info("Запуск главного цикла жизни Ark v2.8 с когнитивной архитектурой")
         
         try:
             # Запуск всех компонентов
             self._start_components()
             
-            # Главный цикл жизни
-            self._life_cycle(args)
+            # Проверка режимов запуска
+            if args and hasattr(args, 'test_mode') and args.test_mode:
+                self.logger.info("🧪 Запуск в тестовом режиме...")
+                self._test_mode_cycle()
+            elif args and hasattr(args, 'demo_mode') and args.demo_mode:
+                self.logger.info("🎭 Запуск в демо режиме...")
+                self._demo_mode_cycle()
+            else:
+                # Главный цикл жизни
+                self._life_cycle(args)
             
         except KeyboardInterrupt:
             self.logger.info("Получен сигнал прерывания")
@@ -232,7 +223,7 @@ class Ark:
         """Запуск всех компонентов системы"""
         try:
             # Запуск метаболизма
-            self.body["metabolism"].start_monitoring()
+            self.body["digital_metabolism"].start_monitoring()
             
             # Запуск сознания
             self.mind["consciousness_core"].start_processing()
@@ -244,7 +235,7 @@ class Ark:
             self.psyche["crew_manager"].initialize()
             
             # Запуск мониторинга
-            self.monitor.start_monitoring()
+            self.evaluation["consciousness_monitor"].start_monitoring()
             
             self.logger.info("Все компоненты запущены")
             
@@ -482,14 +473,14 @@ class Ark:
         """Проверка гомеостаза"""
         try:
             # Получение метрик метаболизма
-            metabolism_metrics = self.body["metabolism"].get_current_metrics()
+            metabolism_metrics = self.body["digital_metabolism"].get_current_metrics()
             
             # Проверка критических состояний
             if metabolism_metrics.state.value == "critical":
                 self.logger.critical("КРИТИЧЕСКОЕ СОСТОЯНИЕ МЕТАБОЛИЗМА")
                 
                 # Экстренное восстановление
-                self.body["metabolism"].emergency_recovery()
+                self.body["digital_metabolism"].emergency_recovery()
                 
                 # Добавление события в сознание
                 self.mind["consciousness_core"].add_event(
@@ -505,13 +496,13 @@ class Ark:
         """Обработка эмоционального состояния"""
         try:
             # Получение текущего эмоционального состояния
-            emotional_state = self.psyche["emotional_core"].get_current_emotional_state()
+            emotional_state = self.psyche["emotional_processing_core"].get_current_emotional_state()
             
             # Затухание эмоций
-            self.psyche["emotional_core"].decay_emotions(decay_rate=0.01)
+            self.psyche["emotional_processing_core"].decay_emotions(decay_rate=0.01)
             
             # Получение доминирующей эмоции
-            dominant_emotion = self.psyche["emotional_core"].get_dominant_emotion()
+            dominant_emotion = self.psyche["emotional_processing_core"].get_dominant_emotion()
             
             if dominant_emotion:
                 self.logger.info(f"Доминирующая эмоция: {dominant_emotion}")
@@ -568,7 +559,7 @@ class Ark:
                 "consciousness": {
                     "current_state": consciousness_state,
                     "memory_size": memory_usage.get("memory_size", 0),
-                    "emotional_state": self.psyche["emotional_core"].get_dominant_emotion()
+                    "emotional_state": self.psyche["emotional_processing_core"].get_dominant_emotion()
                 },
                 "performance": {
                     "response_times": response_times,
@@ -759,7 +750,7 @@ class Ark:
             }
             
             # Log to consciousness monitor
-            self.monitor.log_evolution_request(approval_request)
+            self.evaluation["consciousness_monitor"].log_evolution_request(approval_request)
             
             # For now, auto-approve (in production, this would require human input)
             # TODO: Implement proper human approval interface
@@ -811,7 +802,7 @@ class Ark:
                 "auth_method": "github_token"
             }
             
-            self.monitor.log_evolution_completion(evolution_result)
+            self.evaluation["consciousness_monitor"].log_evolution_completion(evolution_result)
             self.logger.info(f"Evolution completed successfully with PR #{pr_info.get('number')}")
             
         except Exception as e:
@@ -1129,7 +1120,7 @@ This evolution was automatically triggered based on performance analysis and app
             return {
                 "memory_size": len(self.will["self_compiler"].get_change_history(100)),
                 "consciousness_memory": self.mind["consciousness_core"].get_memory_size(),
-                "emotional_memory": self.psyche["emotional_core"].get_memory_size()
+                "emotional_memory": self.psyche["emotional_processing_core"].get_memory_size()
             }
         except Exception as e:
             self.logger.error(f"Failed to get memory usage: {e}")
@@ -1204,30 +1195,155 @@ This evolution was automatically triggered based on performance analysis and app
             return 0.0
     
     def get_system_status(self) -> Dict[str, Any]:
-        """Получение статуса всей системы"""
-        return {
-            "running": self._running,
-            "body": {
-                "sensorium": self.body["sensorium"].get_metrics_json(),
-                "actuator": self.body["actuator"].get_actuator_status(),
-                "metabolism": self.body["metabolism"].get_metabolism_status()
-            },
-            "mind": {
-                "consciousness": self.mind["consciousness_core"].get_consciousness_status(),
-                "self_representation": self.mind["self_representation_core"].get_self_status(),
-                "multi_threaded_thought": self.mind["multi_threaded_thought"].get_current_state()
-            },
-            "psyche": {
-                "emotional": self.psyche["emotional_core"].get_emotional_core_status(),
-                "crew_manager": self.psyche["crew_manager"].get_crew_manager_status()
-            },
-            "will": {
-                "self_compiler": self.will["self_compiler"].get_compiler_status(),
-                "asimov_filter": self.will["asimov_filter"].get_filter_status(),
-                "tool_executor": self.will["tool_executor"].get_executor_status()
-            },
-            "monitor": self.monitor.get_monitor_status()
-        }
+        """Get complete system status"""
+        try:
+            return {
+                "body": {
+                    "sensorium": self.body["sensorium"].get_metrics_json(),
+                    "actuator": self.body["actuator"].get_actuator_status(),
+                    "digital_metabolism": self.body["digital_metabolism"].get_metabolism_status()
+                },
+                "mind": {
+                    "consciousness": self.mind["consciousness_core"].get_consciousness_status(),
+                    "self_representation": self.mind["self_representation_core"].get_self_status(),
+                    "multi_threaded_thought": self.mind["multi_threaded_thought"].get_current_state(),
+                    "cognitive_brain": self.get_cognitive_brain_status()
+                },
+                "psyche": {
+                    "emotional": self.psyche["emotional_processing_core"].get_emotional_core_status(),
+                    "crew_manager": self.psyche["crew_manager"].get_crew_manager_status()
+                },
+                "will": {
+                    "self_compiler": self.will["self_compiler"].get_compiler_status(),
+                    "asimov_compliance_filter": self.will["asimov_compliance_filter"].get_filter_status(),
+                    "tool_executor": self.will["tool_executor"].get_executor_status()
+                },
+                "evaluation": {
+                    "consciousness_monitor": self.evaluation["consciousness_monitor"].get_monitor_status(),
+                    "auto_reporter": self.evaluation["auto_reporter"].get_reporter_status(),
+                    "meta_observer": self.evaluation["meta_observer"].get_observer_status()
+                }
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting system status: {e}")
+            return {"error": str(e)}
+
+    async def process_with_cognitive_brain(self, input_data: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Process input through the cognitive brain"""
+        try:
+            self.logger.info(f"Processing through cognitive brain: {input_data[:100]}...")
+            
+            # Process through cognitive brain
+            result = await self.mind["cognitive_brain"].process_input(input_data, context)
+            
+            if result["success"]:
+                consensus = result["consensus"]
+                self.logger.info(f"Cognitive brain consensus achieved with confidence: {consensus.confidence_score}")
+                
+                # Log the reasoning trace
+                for chain in consensus.reasoning_trace:
+                    self.logger.debug(f"[{chain.department.value}] {chain.output[:100]}...")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error in cognitive brain processing: {e}")
+            return {"success": False, "error": str(e)}
+
+    def get_cognitive_brain_status(self) -> Dict[str, Any]:
+        """Get status of cognitive brain"""
+        try:
+            return self.mind["cognitive_brain"].get_brain_status()
+        except Exception as e:
+            self.logger.error(f"Error getting cognitive brain status: {e}")
+            return {"error": str(e)}
+
+    async def trigger_cognitive_evolution(self, task: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Trigger evolution through cognitive brain"""
+        try:
+            self.logger.info(f"Triggering cognitive evolution for task: {task}")
+            
+            # Process through cognitive brain
+            result = await self.process_with_cognitive_brain(task, context)
+            
+            if result["success"]:
+                consensus = result["consensus"]
+                
+                # If consensus is successful, apply the decision
+                if consensus.confidence_score > 0.7:
+                    self.logger.info(f"High confidence consensus ({consensus.confidence_score}), applying decision")
+                    # Here we would apply the consensus decision
+                    # For now, just log it
+                    self.logger.info(f"Decision to apply: {consensus.final_decision}")
+                else:
+                    self.logger.warning(f"Low confidence consensus ({consensus.confidence_score}), decision may need review")
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"Error in cognitive evolution: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def _test_mode_cycle(self):
+        """Тестовый режим с ограниченным количеством циклов"""
+        self.logger.info("🧪 Тестовый режим: 3 цикла с когнитивной архитектурой")
+        
+        for cycle in range(3):
+            try:
+                self.logger.info(f"🧪 Тестовый цикл #{cycle + 1}")
+                
+                # Сбор метрик
+                self._collect_system_metrics()
+                
+                # Тест когнитивной архитектуры
+                test_input = f"Тестовый запрос #{cycle + 1}: оптимизация системы"
+                result = asyncio.run(self.process_with_cognitive_brain(test_input))
+                
+                if result["success"]:
+                    self.logger.info(f"✅ Когнитивный тест #{cycle + 1} успешен")
+                else:
+                    self.logger.error(f"❌ Когнитивный тест #{cycle + 1} провален: {result.get('error')}")
+                
+                # Пауза между тестами
+                time.sleep(5)
+                
+            except Exception as e:
+                self.logger.error(f"Ошибка в тестовом цикле: {e}")
+        
+        self.logger.info("🧪 Тестовый режим завершен")
+    
+    def _demo_mode_cycle(self):
+        """Демо режим с показом возможностей когнитивной архитектуры"""
+        self.logger.info("🎭 Демо режим: показ когнитивной архитектуры")
+        
+        demo_tasks = [
+            "Оптимизировать производительность системы",
+            "Проанализировать текущие узкие места",
+            "Предложить улучшения безопасности",
+            "Создать план эволюции агента"
+        ]
+        
+        for i, task in enumerate(demo_tasks):
+            try:
+                self.logger.info(f"🎭 Демо задача #{i + 1}: {task}")
+                
+                # Обработка через когнитивную архитектуру
+                result = asyncio.run(self.process_with_cognitive_brain(task))
+                
+                if result["success"]:
+                    consensus = result["consensus"]
+                    self.logger.info(f"✅ Демо #{i + 1}: Решение принято с уверенностью {consensus.confidence_score}")
+                    self.logger.info(f"📋 Решение: {consensus.final_decision[:100]}...")
+                else:
+                    self.logger.error(f"❌ Демо #{i + 1} провален: {result.get('error')}")
+                
+                # Пауза между демо
+                time.sleep(3)
+                
+            except Exception as e:
+                self.logger.error(f"Ошибка в демо режиме: {e}")
+        
+        self.logger.info("🎭 Демо режим завершен")
     
     def shutdown(self):
         """Graceful shutdown системы"""
@@ -1240,10 +1356,10 @@ This evolution was automatically triggered based on performance analysis and app
         
         try:
             # Остановка всех компонентов
-            self.body["metabolism"].stop_monitoring()
+            self.body["digital_metabolism"].stop_monitoring()
             self.mind["consciousness_core"].stop_processing()
             self.mind["multi_threaded_thought"].stop_monitoring()
-            self.monitor.stop_monitoring()
+            self.evaluation["consciousness_monitor"].stop_monitoring()
             
             # Очистка процессов
             killed_count = self.body["actuator"].cleanup_processes()
@@ -1263,6 +1379,16 @@ def parse_arguments():
         '--trigger-reflection',
         action='store_true',
         help="Force the system to enter REFLECTIVE_ANALYSIS state on the first cycle."
+    )
+    parser.add_argument(
+        '--test-mode',
+        action='store_true',
+        help="Run in test mode with limited cycles."
+    )
+    parser.add_argument(
+        '--demo-mode',
+        action='store_true',
+        help="Run in demo mode with cognitive brain showcase."
     )
     return parser.parse_args()
 

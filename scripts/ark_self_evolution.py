@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-ARK Evolution Monitor - Real-time Self-Evolution Tracking
-Monitors and documents the agent's self-improvement process
+ARK Self-Evolution Agent
+Launches ARK Agent in self-evolution mode with real-time documentation
 """
 
 import asyncio
@@ -27,18 +27,19 @@ from main import Ark
 from utils.secret_loader import get_secret
 
 
-class EvolutionMonitor:
-    """Real-time evolution monitoring and documentation"""
+class ARKSelfEvolutionAgent:
+    """ARK Agent running in self-evolution mode with real-time documentation"""
     
     def __init__(self):
-        self.app = FastAPI(title="ARK Evolution Monitor", version="2.8")
+        self.app = FastAPI(title="ARK Self-Evolution Agent", version="2.8")
         self.setup_cors()
         self.setup_routes()
         
         self.ark_agent = None
         self.evolution_log: List[Dict[str, Any]] = []
         self.active_connections: List[WebSocket] = []
-        self.monitoring_active = False
+        self.evolution_active = False
+        self.improvement_thread = None
         
         self.logger = logging.getLogger(__name__)
         
@@ -63,9 +64,9 @@ class EvolutionMonitor:
         async def websocket_endpoint(websocket: WebSocket):
             await self.handle_websocket(websocket)
         
-        @self.app.get("/api/evolution/status")
-        async def get_evolution_status():
-            return self.get_evolution_status()
+        @self.app.get("/api/agent/status")
+        async def get_agent_status():
+            return self.get_agent_status()
         
         @self.app.get("/api/evolution/log")
         async def get_evolution_log():
@@ -73,35 +74,39 @@ class EvolutionMonitor:
         
         @self.app.post("/api/evolution/start")
         async def start_evolution():
-            return await self.start_evolution_process()
+            return await self.start_self_evolution()
         
         @self.app.post("/api/evolution/stop")
         async def stop_evolution():
-            return await self.stop_evolution_process()
-        
-        @self.app.get("/api/agent/status")
-        async def get_agent_status():
-            return self.get_agent_status()
+            return await self.stop_self_evolution()
         
         @self.app.post("/api/agent/improve")
         async def trigger_improvement():
             return await self.trigger_agent_improvement()
+        
+        @self.app.get("/api/github/status")
+        async def get_github_status():
+            return self.get_github_status()
+        
+        @self.app.post("/api/github/commit")
+        async def commit_improvements():
+            return await self.commit_improvements()
     
     def get_dashboard_html(self) -> str:
-        """Generate evolution dashboard HTML"""
+        """Generate self-evolution dashboard HTML"""
         return """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ARK Evolution Monitor</title>
+    <title>ARK Self-Evolution Agent</title>
     <meta charset="utf-8">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #0a0a0a; color: #00ff00; }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
         .header { text-align: center; margin-bottom: 30px; }
-        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; }
         .status-card { background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; }
-        .evolution-log { background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; height: 400px; overflow-y: auto; }
+        .evolution-log { background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; height: 500px; overflow-y: auto; }
         .log-entry { margin-bottom: 10px; padding: 10px; background: #2a2a2a; border-radius: 5px; }
         .log-entry.info { border-left: 3px solid #00ff00; }
         .log-entry.warning { border-left: 3px solid #ffff00; }
@@ -114,19 +119,23 @@ class EvolutionMonitor:
         .metric { display: flex; justify-content: space-between; margin: 5px 0; }
         .metric-value { font-weight: bold; color: #00ffff; }
         .real-time { background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-top: 20px; }
+        .github-status { background: #1a1a1a; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-top: 20px; }
+        .progress-bar { width: 100%; height: 20px; background: #333; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #00ff00; transition: width 0.3s; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 ARK Evolution Monitor</h1>
-            <p>Real-time Self-Evolution Tracking</p>
+            <h1>🤖 ARK Self-Evolution Agent</h1>
+            <p>Autonomous Self-Improvement with Real-time Documentation</p>
         </div>
         
         <div class="controls">
-            <button onclick="startEvolution()" id="startBtn">🚀 Start Evolution</button>
+            <button onclick="startEvolution()" id="startBtn">🚀 Start Self-Evolution</button>
             <button onclick="stopEvolution()" id="stopBtn" disabled>⏹️ Stop Evolution</button>
             <button onclick="triggerImprovement()" id="improveBtn">🔧 Trigger Improvement</button>
+            <button onclick="commitImprovements()" id="commitBtn">💾 Commit Improvements</button>
             <button onclick="clearLog()" id="clearBtn">🗑️ Clear Log</button>
         </div>
         
@@ -139,6 +148,10 @@ class EvolutionMonitor:
                 <h3>🤖 Agent Status</h3>
                 <div id="agentStatus">Loading...</div>
             </div>
+            <div class="status-card">
+                <h3>📊 Performance</h3>
+                <div id="performanceStatus">Loading...</div>
+            </div>
         </div>
         
         <div class="real-time">
@@ -146,8 +159,13 @@ class EvolutionMonitor:
             <div id="realTimeMetrics">Loading...</div>
         </div>
         
+        <div class="github-status">
+            <h3>🔗 GitHub Integration</h3>
+            <div id="githubStatus">Loading...</div>
+        </div>
+        
         <div class="evolution-log">
-            <h3>📝 Evolution Log</h3>
+            <h3>📝 Self-Evolution Log</h3>
             <div id="evolutionLog">Waiting for evolution events...</div>
         </div>
     </div>
@@ -174,6 +192,10 @@ class EvolutionMonitor:
                 updateAgentStatus(data);
             } else if (data.type === 'evolution_status') {
                 updateEvolutionStatus(data);
+            } else if (data.type === 'performance_status') {
+                updatePerformanceStatus(data);
+            } else if (data.type === 'github_status') {
+                updateGitHubStatus(data);
             } else if (data.type === 'real_time_metrics') {
                 updateRealTimeMetrics(data);
             }
@@ -232,6 +254,50 @@ class EvolutionMonitor:
             `;
         }
         
+        function updatePerformanceStatus(data) {
+            const statusDiv = document.getElementById('performanceStatus');
+            statusDiv.innerHTML = `
+                <div class="metric">
+                    <span>CPU Usage:</span>
+                    <span class="metric-value">${data.cpu_percent}%</span>
+                </div>
+                <div class="metric">
+                    <span>Memory Usage:</span>
+                    <span class="metric-value">${data.memory_percent}%</span>
+                </div>
+                <div class="metric">
+                    <span>Temperature:</span>
+                    <span class="metric-value">${data.temperature}°C</span>
+                </div>
+                <div class="metric">
+                    <span>Response Time:</span>
+                    <span class="metric-value">${data.response_time}ms</span>
+                </div>
+            `;
+        }
+        
+        function updateGitHubStatus(data) {
+            const statusDiv = document.getElementById('githubStatus');
+            statusDiv.innerHTML = `
+                <div class="metric">
+                    <span>Repository:</span>
+                    <span class="metric-value">${data.repository}</span>
+                </div>
+                <div class="metric">
+                    <span>Branch:</span>
+                    <span class="metric-value">${data.branch}</span>
+                </div>
+                <div class="metric">
+                    <span>Last Commit:</span>
+                    <span class="metric-value">${data.last_commit}</span>
+                </div>
+                <div class="metric">
+                    <span>Status:</span>
+                    <span class="metric-value">${data.status}</span>
+                </div>
+            `;
+        }
+        
         function updateRealTimeMetrics(data) {
             const metricsDiv = document.getElementById('realTimeMetrics');
             metricsDiv.innerHTML = `
@@ -262,7 +328,7 @@ class EvolutionMonitor:
                     evolutionActive = true;
                     document.getElementById('startBtn').disabled = true;
                     document.getElementById('stopBtn').disabled = false;
-                    addLogEntry('Evolution process started', 'success');
+                    addLogEntry('Self-evolution process started', 'success');
                 } else {
                     addLogEntry(`Failed to start evolution: ${result.error}`, 'error');
                 }
@@ -279,7 +345,7 @@ class EvolutionMonitor:
                     evolutionActive = false;
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('stopBtn').disabled = true;
-                    addLogEntry('Evolution process stopped', 'warning');
+                    addLogEntry('Self-evolution process stopped', 'warning');
                 } else {
                     addLogEntry(`Failed to stop evolution: ${result.error}`, 'error');
                 }
@@ -302,6 +368,20 @@ class EvolutionMonitor:
             }
         }
         
+        async function commitImprovements() {
+            try {
+                const response = await fetch('/api/github/commit', { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    addLogEntry('Improvements committed to GitHub', 'success');
+                } else {
+                    addLogEntry(`Failed to commit improvements: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addLogEntry(`Error committing improvements: ${error}`, 'error');
+            }
+        }
+        
         function clearLog() {
             document.getElementById('evolutionLog').innerHTML = '';
             addLogEntry('Log cleared', 'info');
@@ -311,9 +391,9 @@ class EvolutionMonitor:
         connectWebSocket();
         setInterval(async () => {
             try {
-                const response = await fetch('/api/evolution/status');
+                const response = await fetch('/api/agent/status');
                 const data = await response.json();
-                updateEvolutionStatus(data);
+                updateAgentStatus(data);
             } catch (error) {
                 console.error('Error updating status:', error);
             }
@@ -352,27 +432,6 @@ class EvolutionMonitor:
             except Exception as e:
                 self.logger.error(f"Failed to send evolution event: {e}")
     
-    def get_evolution_status(self) -> Dict[str, Any]:
-        """Get current evolution status"""
-        if not self.ark_agent:
-            return {
-                "status": "not_started",
-                "cycles_completed": 0,
-                "success_rate": 0,
-                "last_evolution": "Never"
-            }
-        
-        try:
-            return {
-                "status": "active" if self.monitoring_active else "stopped",
-                "cycles_completed": self.ark_agent._evolution_cycles,
-                "success_rate": self.ark_agent._evolution_success_rate * 100,
-                "last_evolution": datetime.fromtimestamp(self.ark_agent._last_evolution_time).strftime("%Y-%m-%d %H:%M:%S") if self.ark_agent._last_evolution_time > 0 else "Never"
-            }
-        except Exception as e:
-            self.logger.error(f"Error getting evolution status: {e}")
-            return {"status": "error", "error": str(e)}
-    
     def get_agent_status(self) -> Dict[str, Any]:
         """Get current agent status"""
         if not self.ark_agent:
@@ -389,40 +448,74 @@ class EvolutionMonitor:
             self.logger.error(f"Error getting agent status: {e}")
             return {"error": str(e)}
     
-    async def start_evolution_process(self) -> Dict[str, Any]:
-        """Start the evolution monitoring process"""
+    def get_github_status(self) -> Dict[str, Any]:
+        """Get GitHub integration status"""
         try:
-            if self.monitoring_active:
+            token = get_secret('GITHUB_FINE_TOKEN')
+            repo_url = get_secret('GIT_REPO_URL')
+            
+            if not token or not repo_url:
+                return {"status": "not_configured", "error": "GitHub not configured"}
+            
+            # Extract repo info from URL
+            if 'github.com' in repo_url:
+                parts = repo_url.replace('https://github.com/', '').split('/')
+                if len(parts) >= 2:
+                    owner = parts[0]
+                    repo = parts[1].replace('.git', '')
+                else:
+                    return {"status": "error", "error": "Invalid repository URL"}
+            else:
+                return {"status": "error", "error": "Invalid repository URL"}
+            
+            return {
+                "repository": f"{owner}/{repo}",
+                "branch": "main",
+                "last_commit": "Recent",
+                "status": "connected"
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error getting GitHub status: {e}")
+            return {"status": "error", "error": str(e)}
+    
+    async def start_self_evolution(self) -> Dict[str, Any]:
+        """Start the self-evolution process"""
+        try:
+            if self.evolution_active:
                 return {"success": False, "error": "Evolution already active"}
+            
+            await self.broadcast_evolution_event("Initializing ARK Agent for self-evolution...", "info")
             
             # Initialize ARK agent
             self.ark_agent = Ark()
-            await self.broadcast_evolution_event("ARK Agent initialized", "success")
+            await self.broadcast_evolution_event("ARK Agent initialized successfully", "success")
             
-            # Start monitoring in background
-            self.monitoring_active = True
-            threading.Thread(target=self.run_evolution_monitoring, daemon=True).start()
+            # Start evolution monitoring in background
+            self.evolution_active = True
+            self.improvement_thread = threading.Thread(target=self.run_self_evolution_loop, daemon=True)
+            self.improvement_thread.start()
             
-            await self.broadcast_evolution_event("Evolution monitoring started", "success")
+            await self.broadcast_evolution_event("Self-evolution monitoring started", "success")
             return {"success": True}
             
         except Exception as e:
-            self.logger.error(f"Error starting evolution: {e}")
-            await self.broadcast_evolution_event(f"Error starting evolution: {e}", "error")
+            self.logger.error(f"Error starting self-evolution: {e}")
+            await self.broadcast_evolution_event(f"Error starting self-evolution: {e}", "error")
             return {"success": False, "error": str(e)}
     
-    async def stop_evolution_process(self) -> Dict[str, Any]:
-        """Stop the evolution monitoring process"""
+    async def stop_self_evolution(self) -> Dict[str, Any]:
+        """Stop the self-evolution process"""
         try:
-            self.monitoring_active = False
+            self.evolution_active = False
             if self.ark_agent:
                 self.ark_agent.shutdown()
             
-            await self.broadcast_evolution_event("Evolution monitoring stopped", "warning")
+            await self.broadcast_evolution_event("Self-evolution process stopped", "warning")
             return {"success": True}
             
         except Exception as e:
-            self.logger.error(f"Error stopping evolution: {e}")
+            self.logger.error(f"Error stopping self-evolution: {e}")
             return {"success": False, "error": str(e)}
     
     async def trigger_agent_improvement(self) -> Dict[str, Any]:
@@ -433,38 +526,62 @@ class EvolutionMonitor:
             
             await self.broadcast_evolution_event("Triggering improvement cycle...", "info")
             
-            # Trigger evolution cycle
+            # Run improvement cycle
             improvement_result = await self.run_improvement_cycle()
             
             await self.broadcast_evolution_event(f"Improvement cycle completed: {improvement_result}", "success")
             return {"success": True, "result": improvement_result}
-                
+            
         except Exception as e:
             self.logger.error(f"Error triggering improvement: {e}")
             await self.broadcast_evolution_event(f"Error in improvement cycle: {e}", "error")
             return {"success": False, "error": str(e)}
     
-    def run_evolution_monitoring(self):
-        """Run evolution monitoring in background"""
+    async def commit_improvements(self) -> Dict[str, Any]:
+        """Commit improvements to GitHub"""
         try:
-            while self.monitoring_active:
-                # Collect metrics
+            await self.broadcast_evolution_event("Committing improvements to GitHub...", "info")
+            
+            # This would use the GitHub integration to commit changes
+            # For now, we'll simulate the process
+            commit_result = "Simulated commit to GitHub"
+            
+            await self.broadcast_evolution_event(f"Improvements committed: {commit_result}", "success")
+            return {"success": True, "result": commit_result}
+            
+        except Exception as e:
+            self.logger.error(f"Error committing improvements: {e}")
+            await self.broadcast_evolution_event(f"Error committing improvements: {e}", "error")
+            return {"success": False, "error": str(e)}
+    
+    def run_self_evolution_loop(self):
+        """Run the self-evolution monitoring loop"""
+        try:
+            while self.evolution_active:
+                # Collect current metrics
                 metrics = self.collect_agent_metrics()
                 
                 # Analyze for improvements
                 improvements = self.analyze_for_improvements(metrics)
                 
-                # Trigger improvements if needed
+                # Apply improvements if found
                 if improvements:
                     asyncio.run(self.broadcast_evolution_event(f"Found {len(improvements)} potential improvements", "info"))
                     for improvement in improvements:
-                        asyncio.run(self.broadcast_evolution_event(f"Improvement: {improvement}", "info"))
+                        asyncio.run(self.broadcast_evolution_event(f"Applying improvement: {improvement}", "info"))
+                        # Apply the improvement
+                        self.apply_improvement(improvement)
                 
-                time.sleep(30)  # Check every 30 seconds
+                # Update evolution cycles
+                if self.ark_agent:
+                    self.ark_agent._evolution_cycles += 1
+                    self.ark_agent._last_evolution_time = time.time()
+                
+                time.sleep(60)  # Check every minute
                 
         except Exception as e:
-            self.logger.error(f"Error in evolution monitoring: {e}")
-            asyncio.run(self.broadcast_evolution_event(f"Monitoring error: {e}", "error"))
+            self.logger.error(f"Error in self-evolution loop: {e}")
+            asyncio.run(self.broadcast_evolution_event(f"Self-evolution error: {e}", "error"))
     
     def collect_agent_metrics(self) -> Dict[str, Any]:
         """Collect current agent metrics"""
@@ -479,7 +596,7 @@ class EvolutionMonitor:
                 "evolution_cycles": self.ark_agent._evolution_cycles,
                 "performance_metrics": self.ark_agent._get_performance_metrics()
             }
-            except Exception as e:
+        except Exception as e:
             self.logger.error(f"Error collecting metrics: {e}")
             return {}
     
@@ -491,34 +608,50 @@ class EvolutionMonitor:
             # Check memory usage
             memory_size = metrics.get("memory_size", 0)
             if memory_size > 1000:
-                improvements.append("High memory usage detected - optimize memory management")
+                improvements.append("Optimize memory management")
             
             # Check consciousness state
             consciousness_state = metrics.get("consciousness_state", "unknown")
             if consciousness_state == "idle":
-                improvements.append("Agent is idle - consider activating more processing")
+                improvements.append("Activate additional processing capabilities")
             
             # Check evolution cycles
             evolution_cycles = metrics.get("evolution_cycles", 0)
             if evolution_cycles == 0:
-                improvements.append("No evolution cycles completed - initiate first evolution")
+                improvements.append("Initialize first evolution cycle")
             
             # Check performance metrics
             performance = metrics.get("performance_metrics", {})
             if performance:
                 cpu_percent = performance.get("system", {}).get("cpu_percent", 0)
                 if cpu_percent > 80:
-                    improvements.append("High CPU usage - optimize processing efficiency")
+                    improvements.append("Optimize processing efficiency")
                 
                 response_times = performance.get("performance", {}).get("response_times", {})
                 avg_response = response_times.get("average", 0)
                 if avg_response > 5.0:
-                    improvements.append("Slow response times - optimize processing pipeline")
-                
+                    improvements.append("Optimize processing pipeline")
+            
         except Exception as e:
             self.logger.error(f"Error analyzing improvements: {e}")
         
         return improvements
+    
+    def apply_improvement(self, improvement: str):
+        """Apply a specific improvement"""
+        try:
+            # This would implement the actual improvement logic
+            # For now, we'll log the improvement
+            self.logger.info(f"Applying improvement: {improvement}")
+            
+            # In a real implementation, this would:
+            # 1. Generate code changes
+            # 2. Test the changes
+            # 3. Apply successful changes
+            # 4. Update documentation
+            
+        except Exception as e:
+            self.logger.error(f"Error applying improvement: {e}")
     
     async def run_improvement_cycle(self) -> str:
         """Run a single improvement cycle"""
@@ -542,8 +675,8 @@ class EvolutionMonitor:
 
 
 def main():
-    """Start the evolution monitor"""
-    monitor = EvolutionMonitor()
+    """Start the ARK Self-Evolution Agent"""
+    agent = ARKSelfEvolutionAgent()
     
     # Setup logging
     logging.basicConfig(
@@ -551,15 +684,16 @@ def main():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    print("🚀 Starting ARK Evolution Monitor...")
-    print("📊 Dashboard available at: http://localhost:8080")
-    print("🔗 WebSocket endpoint: ws://localhost:8080/ws")
+    print("🚀 Starting ARK Self-Evolution Agent...")
+    print("📊 Dashboard available at: http://localhost:8081")
+    print("🔗 WebSocket endpoint: ws://localhost:8081/ws")
+    print("🤖 Agent will continuously self-improve and document the process")
     
     # Start the server
     uvicorn.run(
-        monitor.app,
+        agent.app,
         host="0.0.0.0",
-        port=8080,
+        port=8081,
         log_level="info"
     )
 

@@ -626,10 +626,458 @@ class AgentTools:
         return tools
 
     def get_all_tools(self) -> List:
+        """Get all available tools"""
+        return [
+            self.read_system_logs,
+            self.get_process_info,
+            self.get_system_metrics,
+            self.read_file_content,
+            self.write_file_content,
+            self.list_directory,
+            self.get_environment_info,
+            self.check_service_status,
+            self.get_network_connections,
+            self.get_tool_status,
+            self.analyze_log_file_summary,
+            self.get_system_state_summary,
+            self.read_source_code_file,
+            self.execute_live_patch,
+            self.trigger_graceful_restart,
+            # Новые инструменты для отделов мозга
+            self.analyze_performance,
+            self.plan_evolution,
+            self.review_code_changes,
+            self.validate_syntax,
+            self.check_security,
+            self.identify_bottlenecks
+        ]
+    
+    def analyze_performance(self, target: str = "system") -> Dict[str, Any]:
         """
-        Возвращает все инструменты в формате LangChain для использования агентами.
+        Анализирует производительность системы или компонента
         
+        Args:
+            target: Цель анализа ("system", "cpu", "memory", "disk", "network")
+            
         Returns:
-            Список инструментов LangChain
+            Словарь с результатами анализа производительности
         """
-        return self.create_langchain_tools() 
+        try:
+            if target == "system":
+                metrics = self.get_system_metrics()
+                analysis = {
+                    "cpu_usage": metrics.get("cpu_percent", 0),
+                    "memory_usage": metrics.get("memory_percent", 0),
+                    "disk_usage": metrics.get("disk_usage_percent", 0),
+                    "temperature": metrics.get("temperature_celsius", 0),
+                    "load_average": metrics.get("load_average", [0, 0, 0]),
+                    "performance_score": self._calculate_performance_score(metrics),
+                    "bottlenecks": self._identify_performance_bottlenecks(metrics),
+                    "recommendations": self._generate_performance_recommendations(metrics)
+                }
+                return analysis
+            else:
+                return {"error": f"Анализ производительности для {target} не реализован"}
+                
+        except Exception as e:
+            self.logger.error(f"Ошибка анализа производительности: {e}")
+            return {"error": str(e)}
+    
+    def plan_evolution(self, current_state: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        Планирует эволюцию системы на основе текущего состояния
+        
+        Args:
+            current_state: Текущее состояние системы
+            
+        Returns:
+            План эволюции с приоритетами и этапами
+        """
+        try:
+            if not current_state:
+                current_state = self.get_system_state_summary()
+            
+            # Анализ текущего состояния
+            performance = self.analyze_performance()
+            bottlenecks = performance.get("bottlenecks", [])
+            
+            # Создание плана эволюции
+            evolution_plan = {
+                "current_state": current_state,
+                "identified_issues": bottlenecks,
+                "evolution_stages": [
+                    {
+                        "stage": 1,
+                        "priority": "critical",
+                        "actions": ["fix_critical_bottlenecks", "optimize_performance"],
+                        "estimated_time": "1-2 hours",
+                        "success_criteria": ["performance_score > 0.8", "no_critical_bottlenecks"]
+                    },
+                    {
+                        "stage": 2,
+                        "priority": "high",
+                        "actions": ["implement_improvements", "enhance_security"],
+                        "estimated_time": "2-4 hours",
+                        "success_criteria": ["security_score > 0.9", "stability_improved"]
+                    },
+                    {
+                        "stage": 3,
+                        "priority": "medium",
+                        "actions": ["optimize_architecture", "add_features"],
+                        "estimated_time": "4-8 hours",
+                        "success_criteria": ["architecture_score > 0.85", "new_features_working"]
+                    }
+                ],
+                "risk_assessment": {
+                    "low_risk": ["performance_optimization"],
+                    "medium_risk": ["security_enhancement"],
+                    "high_risk": ["architecture_changes"]
+                },
+                "rollback_plan": {
+                    "triggers": ["performance_degradation", "security_issues", "stability_problems"],
+                    "actions": ["restore_backup", "revert_changes", "emergency_fix"]
+                }
+            }
+            
+            return evolution_plan
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка планирования эволюции: {e}")
+            return {"error": str(e)}
+    
+    def review_code_changes(self, file_path: str, changes: str) -> Dict[str, Any]:
+        """
+        Проводит ревью изменений кода
+        
+        Args:
+            file_path: Путь к файлу
+            changes: Описание изменений
+            
+        Returns:
+            Результат ревью с рекомендациями
+        """
+        try:
+            # Чтение текущего кода
+            current_code = self.read_source_code_file(file_path)
+            
+            # Анализ изменений
+            review_result = {
+                "file_path": file_path,
+                "review_timestamp": time.time(),
+                "code_quality": {
+                    "readability": self._assess_readability(changes),
+                    "maintainability": self._assess_maintainability(changes),
+                    "performance_impact": self._assess_performance_impact(changes),
+                    "security_impact": self._assess_security_impact(changes)
+                },
+                "issues_found": [],
+                "recommendations": [],
+                "approval_status": "pending"
+            }
+            
+            # Проверка на потенциальные проблемы
+            if "TODO" in changes or "FIXME" in changes:
+                review_result["issues_found"].append("Contains TODO/FIXME comments")
+            
+            if "print(" in changes and "logging" not in changes:
+                review_result["recommendations"].append("Consider using logging instead of print statements")
+            
+            if "password" in changes.lower() or "secret" in changes.lower():
+                review_result["issues_found"].append("Potential security concern - hardcoded credentials")
+                review_result["approval_status"] = "requires_security_review"
+            
+            # Оценка качества
+            if len(review_result["issues_found"]) == 0:
+                review_result["approval_status"] = "approved"
+            elif len(review_result["issues_found"]) <= 2:
+                review_result["approval_status"] = "approved_with_changes"
+            else:
+                review_result["approval_status"] = "rejected"
+            
+            return review_result
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка ревью кода: {e}")
+            return {"error": str(e)}
+    
+    def validate_syntax(self, code: str, language: str = "python") -> Dict[str, Any]:
+        """
+        Проверяет синтаксис кода
+        
+        Args:
+            code: Код для проверки
+            language: Язык программирования
+            
+        Returns:
+            Результат валидации синтаксиса
+        """
+        try:
+            if language == "python":
+                # Проверка синтаксиса Python
+                try:
+                    compile(code, '<string>', 'exec')
+                    syntax_valid = True
+                    errors = []
+                except SyntaxError as e:
+                    syntax_valid = False
+                    errors = [f"Syntax error: {str(e)}"]
+                except Exception as e:
+                    syntax_valid = False
+                    errors = [f"Compilation error: {str(e)}"]
+                
+                return {
+                    "language": language,
+                    "syntax_valid": syntax_valid,
+                    "errors": errors,
+                    "warnings": [],
+                    "code_metrics": {
+                        "lines": len(code.split('\n')),
+                        "characters": len(code),
+                        "functions": code.count('def '),
+                        "classes": code.count('class ')
+                    }
+                }
+            else:
+                return {"error": f"Валидация синтаксиса для {language} не реализована"}
+                
+        except Exception as e:
+            self.logger.error(f"Ошибка валидации синтаксиса: {e}")
+            return {"error": str(e)}
+    
+    def check_security(self, target: str = "system") -> Dict[str, Any]:
+        """
+        Проверяет безопасность системы
+        
+        Args:
+            target: Цель проверки ("system", "code", "network", "files")
+            
+        Returns:
+            Результат проверки безопасности
+        """
+        try:
+            security_report = {
+                "timestamp": time.time(),
+                "target": target,
+                "vulnerabilities": [],
+                "security_score": 0.0,
+                "recommendations": []
+            }
+            
+            if target == "system":
+                # Проверка системной безопасности
+                env_info = self.get_environment_info()
+                
+                # Проверка переменных окружения
+                if "password" in str(env_info).lower():
+                    security_report["vulnerabilities"].append("Potential password in environment variables")
+                
+                # Проверка процессов
+                processes = self.get_process_info()
+                for proc in processes.get("processes", []):
+                    if proc.get("name", "").lower() in ["telnet", "ftp"]:
+                        security_report["vulnerabilities"].append(f"Insecure service running: {proc.get('name')}")
+                
+                # Проверка сетевых соединений
+                network = self.get_network_connections()
+                if network.get("connections"):
+                    security_report["vulnerabilities"].append("Active network connections detected")
+                
+                # Расчет security score
+                total_checks = 5
+                passed_checks = total_checks - len(security_report["vulnerabilities"])
+                security_report["security_score"] = passed_checks / total_checks
+                
+                # Рекомендации
+                if security_report["security_score"] < 0.8:
+                    security_report["recommendations"].append("Implement additional security measures")
+                    security_report["recommendations"].append("Review and update access controls")
+                
+            elif target == "code":
+                # Проверка безопасности кода
+                security_report["vulnerabilities"].append("Code security analysis not implemented")
+                security_report["security_score"] = 0.5
+                
+            else:
+                security_report["vulnerabilities"].append(f"Security check for {target} not implemented")
+                security_report["security_score"] = 0.0
+            
+            return security_report
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка проверки безопасности: {e}")
+            return {"error": str(e)}
+    
+    def identify_bottlenecks(self, system_metrics: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        Выявляет узкие места в системе
+        
+        Args:
+            system_metrics: Метрики системы (если None, получает автоматически)
+            
+        Returns:
+            Анализ узких мест с рекомендациями
+        """
+        try:
+            if not system_metrics:
+                system_metrics = self.get_system_metrics()
+            
+            bottlenecks = {
+                "timestamp": time.time(),
+                "bottlenecks_found": [],
+                "severity_levels": {
+                    "critical": [],
+                    "high": [],
+                    "medium": [],
+                    "low": []
+                },
+                "recommendations": []
+            }
+            
+            # Анализ CPU
+            cpu_percent = system_metrics.get("cpu_percent", 0)
+            if cpu_percent > 90:
+                bottlenecks["bottlenecks_found"].append("CPU usage critically high")
+                bottlenecks["severity_levels"]["critical"].append("CPU bottleneck")
+                bottlenecks["recommendations"].append("Optimize CPU-intensive processes")
+            elif cpu_percent > 80:
+                bottlenecks["bottlenecks_found"].append("CPU usage high")
+                bottlenecks["severity_levels"]["high"].append("CPU bottleneck")
+                bottlenecks["recommendations"].append("Monitor CPU usage and optimize if needed")
+            
+            # Анализ памяти
+            memory_percent = system_metrics.get("memory_percent", 0)
+            if memory_percent > 95:
+                bottlenecks["bottlenecks_found"].append("Memory usage critically high")
+                bottlenecks["severity_levels"]["critical"].append("Memory bottleneck")
+                bottlenecks["recommendations"].append("Free up memory or add more RAM")
+            elif memory_percent > 85:
+                bottlenecks["bottlenecks_found"].append("Memory usage high")
+                bottlenecks["severity_levels"]["high"].append("Memory bottleneck")
+                bottlenecks["recommendations"].append("Monitor memory usage")
+            
+            # Анализ диска
+            disk_usage = system_metrics.get("disk_usage_percent", 0)
+            if disk_usage > 95:
+                bottlenecks["bottlenecks_found"].append("Disk usage critically high")
+                bottlenecks["severity_levels"]["critical"].append("Disk bottleneck")
+                bottlenecks["recommendations"].append("Free up disk space immediately")
+            elif disk_usage > 85:
+                bottlenecks["bottlenecks_found"].append("Disk usage high")
+                bottlenecks["severity_levels"]["high"].append("Disk bottleneck")
+                bottlenecks["recommendations"].append("Clean up unnecessary files")
+            
+            # Анализ температуры
+            temperature = system_metrics.get("temperature_celsius", 0)
+            if temperature > 85:
+                bottlenecks["bottlenecks_found"].append("System temperature critically high")
+                bottlenecks["severity_levels"]["critical"].append("Thermal bottleneck")
+                bottlenecks["recommendations"].append("Check cooling system and reduce load")
+            elif temperature > 75:
+                bottlenecks["bottlenecks_found"].append("System temperature high")
+                bottlenecks["severity_levels"]["high"].append("Thermal bottleneck")
+                bottlenecks["recommendations"].append("Monitor temperature and optimize cooling")
+            
+            return bottlenecks
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка выявления узких мест: {e}")
+            return {"error": str(e)}
+    
+    def _calculate_performance_score(self, metrics: Dict[str, Any]) -> float:
+        """Рассчитывает общий score производительности"""
+        try:
+            cpu_score = 1.0 - (metrics.get("cpu_percent", 0) / 100.0)
+            memory_score = 1.0 - (metrics.get("memory_percent", 0) / 100.0)
+            disk_score = 1.0 - (metrics.get("disk_usage_percent", 0) / 100.0)
+            
+            # Нормализованная температура (0-100°C -> 0-1 score)
+            temp = metrics.get("temperature_celsius", 25)
+            temp_score = max(0, 1.0 - ((temp - 25) / 60))  # 25°C = 1.0, 85°C = 0.0
+            
+            return (cpu_score + memory_score + disk_score + temp_score) / 4.0
+            
+        except Exception as e:
+            self.logger.error(f"Ошибка расчета performance score: {e}")
+            return 0.5
+    
+    def _identify_performance_bottlenecks(self, metrics: Dict[str, Any]) -> List[str]:
+        """Выявляет узкие места производительности"""
+        bottlenecks = []
+        
+        if metrics.get("cpu_percent", 0) > 80:
+            bottlenecks.append("High CPU usage")
+        if metrics.get("memory_percent", 0) > 85:
+            bottlenecks.append("High memory usage")
+        if metrics.get("disk_usage_percent", 0) > 90:
+            bottlenecks.append("High disk usage")
+        if metrics.get("temperature_celsius", 0) > 75:
+            bottlenecks.append("High temperature")
+            
+        return bottlenecks
+    
+    def _generate_performance_recommendations(self, metrics: Dict[str, Any]) -> List[str]:
+        """Генерирует рекомендации по улучшению производительности"""
+        recommendations = []
+        
+        if metrics.get("cpu_percent", 0) > 80:
+            recommendations.append("Optimize CPU-intensive processes")
+        if metrics.get("memory_percent", 0) > 85:
+            recommendations.append("Free up memory or add more RAM")
+        if metrics.get("disk_usage_percent", 0) > 90:
+            recommendations.append("Clean up disk space")
+        if metrics.get("temperature_celsius", 0) > 75:
+            recommendations.append("Improve cooling system")
+            
+        return recommendations
+    
+    def _assess_readability(self, code: str) -> float:
+        """Оценивает читаемость кода"""
+        try:
+            lines = code.split('\n')
+            avg_line_length = sum(len(line) for line in lines) / len(lines) if lines else 0
+            comment_ratio = sum(1 for line in lines if line.strip().startswith('#')) / len(lines) if lines else 0
+            
+            # Простая эвристика
+            if avg_line_length < 80 and comment_ratio > 0.1:
+                return 0.9
+            elif avg_line_length < 100:
+                return 0.7
+            else:
+                return 0.5
+        except:
+            return 0.5
+    
+    def _assess_maintainability(self, code: str) -> float:
+        """Оценивает поддерживаемость кода"""
+        try:
+            lines = code.split('\n')
+            function_count = code.count('def ')
+            class_count = code.count('class ')
+            
+            # Простая эвристика
+            if function_count > 0 and class_count > 0:
+                return 0.8
+            elif function_count > 0:
+                return 0.7
+            else:
+                return 0.5
+        except:
+            return 0.5
+    
+    def _assess_performance_impact(self, code: str) -> str:
+        """Оценивает влияние на производительность"""
+        if any(keyword in code.lower() for keyword in ['sleep', 'time.sleep', 'while true']):
+            return "high"
+        elif any(keyword in code.lower() for keyword in ['for', 'while', 'loop']):
+            return "medium"
+        else:
+            return "low"
+    
+    def _assess_security_impact(self, code: str) -> str:
+        """Оценивает влияние на безопасность"""
+        if any(keyword in code.lower() for keyword in ['password', 'secret', 'key', 'token']):
+            return "high"
+        elif any(keyword in code.lower() for keyword in ['eval', 'exec', 'subprocess']):
+            return "medium"
+        else:
+            return "low" 
